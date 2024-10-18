@@ -41,17 +41,17 @@ gr.add_edge('d', 'f', 1)
 gr.add_edge('f', 'd', 3)
 gr.add_edge('f', 'a', 3)
 gr.add_edge('a', 'f', 1)
-print(gr.graph)
+# print(gr.graph)
 
 num_ants = 10
-num_iterations = 40
+num_iterations = 16
 alpha = 1.0
 beta = 2.0
 evaporation_rate = 0.1
 
 aco = AntColony(gr, num_ants, num_iterations,
                 alpha, beta, evaporation_rate)
-best_route, best_distance = aco.run()
+best_route, best_distance = aco.run(visualize=True)
 
 print("Лучший маршрут:", best_route)
 print("Лучшее расстояние:", best_distance)
