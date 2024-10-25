@@ -77,34 +77,60 @@ class AntColony:
             all_routes.append(route)
         return all_routes
 
+
     def build_route(self):
-        start_city = random.choice(list(self.graph.graph.keys()))
-        route = [start_city]
-        visited = set(route)
+        while True:
+            start_city = random.choice(list(self.graph.graph.keys()))
+            route = [start_city]
+            visited = set(route)
 
-        while len(visited) < len(self.graph.graph):
-            current_city = route[-1]
-            probabilities = self.calculate_probabilities(current_city, visited)
-            next_city = np.random.choice(
-                list(probabilities.keys()), p=list(probabilities.values()))
-            route.append(next_city)
-            visited.add(next_city)
+            # Строим маршрут до посещения всех городов
+            while len(visited) < len(self.graph.graph):
+                current_city = route[-1]
+                probabilities = self.calculate_probabilities(current_city, visited)
+                unvisited_neighbors = {
+                    city: prob for city, prob in probabilities.items() if city not in visited}
 
-        return route
+                if not unvisited_neighbors:
+                    break  # Завершаем попытку маршрута и начинаем сначала
+
+                # Выбираем следующий город
+                next_city = np.random.choice(
+                    list(unvisited_neighbors.keys()), p=list(unvisited_neighbors.values()))
+                route.append(next_city)
+                visited.add(next_city)
+            if not unvisited_neighbors:
+                continue
+
+            # Проверяем, существует ли путь от последнего города в маршруте к начальному
+            if self.graph.is_oriented:
+                if (route[-1], start_city) in self.pheromone:
+                    route.append(start_city)
+                    return route
+            else:
+                if (route[-1], start_city) in self.pheromone or (start_city, route[-1]) in self.pheromone:
+                    route.append(start_city)
+                    return route
 
     def calculate_probabilities(self, current_city, visited):
-        pheromone = np.array([self.pheromone.get((current_city, neighbor), 0)
-                             for neighbor, _ in self.graph.get_neighbors(current_city)])
-        visibility = np.array(
-            [1 / weight for _, weight in self.graph.get_neighbors(current_city)])
+        neighbors = [(neighbor, weight) for neighbor, weight in self.graph.get_neighbors(
+            current_city) if neighbor not in visited]
 
-        numerator = pheromone ** self.alpha * visibility ** self.beta
-        denominator = np.sum(
-            numerator[~np.isin(range(len(pheromone)), list(visited))])
+        if not neighbors:
+            return {}  # Вернуть пустой словарь, если нет непосещенных соседей
 
-        probabilities = numerator / denominator
-        probabilities[np.isin(range(len(pheromone)), list(visited))] = 0
-        return {neighbor: prob for neighbor, prob in zip([neighbor for neighbor, _ in self.graph.get_neighbors(current_city)], probabilities)}
+        pheromone = np.array(
+            [self.pheromone.get((current_city, neighbor), 0) for neighbor, _ in neighbors])
+        visibility = np.array([1 / weight for _, weight in neighbors])
+
+        # Вычисляем вероятности с учетом альфа и бета
+        numerator = (pheromone ** self.alpha) * (visibility ** self.beta)
+        denominator = np.sum(numerator)
+
+        probabilities = numerator / \
+            denominator if denominator > 0 else np.zeros_like(numerator)
+
+        return {neighbor: prob for (neighbor, _), prob in zip(neighbors, probabilities)}
 
     def update_pheromone(self, all_routes):
         # Испаряем феромоны
@@ -130,6 +156,7 @@ class AntColony:
             if distance < self.best_distance:
                 self.best_distance = distance
                 self.best_route = route
+                
     def visualize(self, ax, iteration, all_routes):
         ax.clear()
 
@@ -164,7 +191,8 @@ class AntColony:
             ax.plot(coord[0], coord[1], 'bo', markersize=8)
             ax.text(coord[0], coord[1], city, fontsize=15, ha='right', color='purple')
 
-        ax.set_title(f"Iteration {iteration+1}")
+        ax.set_title(
+            f"Iteration {iteration+1}\nBest distance: {self.best_distance}\nBest route: {self.best_route}")
         ax.legend()
 
         plt.draw()
