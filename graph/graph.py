@@ -43,5 +43,8 @@ class Graph:
         # Возвращает строковое представление графа
         result = ""
         for vertex in self.graph:
-            result += f"{vertex}: {self.graph[vertex]}\n"
+            for a, b in self.graph[vertex]:
+                result += f"{vertex} -> {a}, weight: {b} | "
+            result = result[:-2]
+            result += '\n'
         return result

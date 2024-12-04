@@ -74,7 +74,8 @@ class AntColony:
         all_routes = []
         for _ in range(self.num_ants):
             route = self.build_route()
-            all_routes.append(route)
+            if route is not None:
+                all_routes.append(route)
         return all_routes
 
 
@@ -92,15 +93,16 @@ class AntColony:
                     city: prob for city, prob in probabilities.items() if city not in visited}
 
                 if not unvisited_neighbors:
-                    break  # Завершаем попытку маршрута и начинаем сначала
+                    # break  # Завершаем попытку маршрута и начинаем сначала
+                    return None
 
                 # Выбираем следующий город
                 next_city = np.random.choice(
                     list(unvisited_neighbors.keys()), p=list(unvisited_neighbors.values()))
                 route.append(next_city)
                 visited.add(next_city)
-            if not unvisited_neighbors:
-                continue
+            # if not unvisited_neighbors:
+            #     continue
 
             # Проверяем, существует ли путь от последнего города в маршруте к начальному
             if self.graph.is_oriented:
