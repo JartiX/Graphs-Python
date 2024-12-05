@@ -15,6 +15,7 @@ class AntColony:
         self.pheromone = {edge: 1.0 for edge in self.get_all_edges()}
         self.best_distance = float('inf')
         self.best_route = None
+        self.chances = []
         
         # Случайные координаты для визуализации
         self.coords = self.generate_random_coords()
@@ -59,16 +60,74 @@ class AntColony:
 
     def run(self, visualize):
         if visualize:
-            fig, ax = plt.subplots(figsize=(8, 8))
+            fig, ax_routes = plt.subplots(figsize=(8, 8))
+            fig2, ax_chances = plt.subplots(figsize=(8,8))
             plt.ion()
+            
+        cur_best_route = self.best_route
         for iteration in range(self.num_iterations):
             all_routes = self.construct_routes()
+            
+            chance = self.calculate_best_path_chance(
+                all_routes, cur_best_route)
+            self.chances.append(chance)
+            
             self.update_pheromone(all_routes)
             self.update_best_route(all_routes)
+            
+            cur_best_route = self.best_route
+
             if visualize:
-                self.visualize(ax, iteration, all_routes)
+                self.visualize(ax_routes, iteration, all_routes)
+                self.update_chances_plot(ax_chances, iteration)
+            print(
+                f"iteration: {iteration}, found best route: {self.best_route}, chance: {chance:.2%}")
 
         return self.best_route, self.best_distance
+
+
+    def update_chances_plot(self, ax, iteration):
+        ax.clear()
+        ax.plot(range(1, len(self.chances) + 1),
+                self.chances, marker='o', color='blue')
+        ax.set_title("Chance of Following the Best Path per Iteration")
+        ax.set_xlabel("Iteration")
+        ax.set_ylabel("Chance")
+        ax.grid(True)
+        ax.set_xlim(1, self.num_iterations)
+        ax.set_ylim(0, 1)
+        plt.draw()
+        plt.pause(0.1)
+
+
+    def calculate_best_path_chance(self, all_routes, current_best_route):
+        if not current_best_route:
+            return 0  # Нет маршрута для сравнения
+
+        if not all_routes:
+            return 0  # Нет сгенерированных маршрутов
+
+        total_probability = 0
+        num_edges_in_best = len(current_best_route) - \
+            1 
+
+        for i in range(num_edges_in_best):
+            u, v = current_best_route[i], current_best_route[i + 1]
+            pheromone_value = self.pheromone.get((u, v), 0)
+            if not self.graph.is_oriented:
+                pheromone_value += self.pheromone.get((v, u), 0)
+
+            # Рассчитываем суммарную вероятность выбора этого ребра
+            edge_probability = pheromone_value / sum(
+                self.pheromone.get((u, neighbor), 0) +
+                self.pheromone.get((neighbor, u), 0)
+                for neighbor, _ in self.graph.get_neighbors(u)
+            )
+            total_probability += edge_probability
+
+        average_probability = total_probability / num_edges_in_best
+        return average_probability
+
 
     def construct_routes(self):
         all_routes = []
@@ -81,6 +140,7 @@ class AntColony:
 
     def build_route(self):
         while True:
+            # print(self.graph.graph)
             start_city = random.choice(list(self.graph.graph.keys()))
             route = [start_city]
             visited = set(route)
@@ -198,4 +258,4 @@ class AntColony:
         ax.legend()
 
         plt.draw()
-        plt.pause(1)
+        plt.pause(2)

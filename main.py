@@ -69,11 +69,11 @@ gr.add_edge('f', 'd', 3)
 gr.add_edge('f', 'a', 3)
 print(gr)
 
-num_ants = 2
+num_ants = 1
 num_iterations = 10
-alpha = 1.0
-beta = 1.0
-evaporation_rate = 0.1
+alpha = 0.6
+beta = 0.4
+evaporation_rate = 0.3
 
 aco = AntColony(gr, num_ants, num_iterations,
                 alpha, beta, evaporation_rate)
@@ -83,3 +83,20 @@ aco2 = AntColony(gr1, num_ants, num_iterations, alpha, beta, evaporation_rate)
 best_route, best_distance = aco.run(visualize=True)
 print("Лучший маршрут:", best_route)
 print("Лучшее расстояние:", best_distance)
+
+# gr1000 = Graph()
+# with open('1000.txt', 'r') as f:
+#     for l in f:
+#         try:
+#             line = l.split()[0:3]
+#             if len(line) < 3:
+#                 continue
+#             # print(line)
+#             gr1000.add_edge(int(line[0]), int(line[1]), int(line[2]))
+#         except:
+#             continue
+
+
+# aco = AntColony(gr1000, 1000, 100, 0.5, 0.5, 0.1)
+# route, dist = aco.run(False)
+# print(route, dist)
