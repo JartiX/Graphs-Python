@@ -81,7 +81,7 @@ class AntColony:
                 self.visualize(ax_routes, iteration, all_routes)
                 self.update_chances_plot(ax_chances, iteration)
             print(
-                f"iteration: {iteration}, found best route: {self.best_route}, chance: {chance:.2%}")
+                f"iteration: {iteration}, found best route: {self.best_route}")
 
         return self.best_route, self.best_distance
 
@@ -102,31 +102,39 @@ class AntColony:
 
     def calculate_best_path_chance(self, all_routes, current_best_route):
         if not current_best_route:
-            return 0  # Нет маршрута для сравнения
+            return 0 
 
         if not all_routes:
-            return 0  # Нет сгенерированных маршрутов
+            return 0 
 
-        total_probability = 0
-        num_edges_in_best = len(current_best_route) - \
-            1 
+        total_probability = 1 
 
-        for i in range(num_edges_in_best):
+        for i in range(len(current_best_route) - 1):
             u, v = current_best_route[i], current_best_route[i + 1]
             pheromone_value = self.pheromone.get((u, v), 0)
             if not self.graph.is_oriented:
                 pheromone_value += self.pheromone.get((v, u), 0)
 
-            # Рассчитываем суммарную вероятность выбора этого ребра
-            edge_probability = pheromone_value / sum(
-                self.pheromone.get((u, neighbor), 0) +
-                self.pheromone.get((neighbor, u), 0)
+            visibility = 1 / self.graph.get_weight(u, v)
+
+            # Рассчитываем вероятность перехода по текущему ребру
+            edge_probability = (pheromone_value ** self.alpha) * \
+                (visibility ** self.beta)
+
+            sum_probabilities = sum(
+                (self.pheromone.get((u, neighbor), 0) ** self.alpha) *
+                ((1 / self.graph.get_weight(u, neighbor)) ** self.beta)
                 for neighbor, _ in self.graph.get_neighbors(u)
             )
-            total_probability += edge_probability
 
-        average_probability = total_probability / num_edges_in_best
-        return average_probability
+            if sum_probabilities > 0:
+                edge_probability /= sum_probabilities
+
+            total_probability *= edge_probability
+
+        return total_probability
+
+
 
 
     def construct_routes(self):
