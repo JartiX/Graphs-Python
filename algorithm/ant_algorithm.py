@@ -19,6 +19,7 @@ class AntColony:
         self.best_routes = []
         self.chances = []
         self.num_best_routes = 0
+        self.distances_per_iteration = []
 
         # Случайные координаты для визуализации
         self.coords = self.generate_random_coords()
@@ -67,6 +68,7 @@ class AntColony:
         if visualize:
             fig, ax_routes = plt.subplots(figsize=(8, 8))
             fig2, ax_chances = plt.subplots(figsize=(8, 8))
+            fig3, ax_distances = plt.subplots(figsize=(8, 8))
             plt.ion()
 
         cur_best_route = self.best_route
@@ -81,14 +83,28 @@ class AntColony:
             self.update_best_route(all_routes)
 
             cur_best_route = self.best_route
+            self.distances_per_iteration.append(self.best_distance)
 
             if visualize:
                 self.visualize(ax_routes, iteration, all_routes)
                 self.update_chances_plot(ax_chances, iteration)
+                self.update_distance_plot(ax_distances)
             print(
                 f"iteration: {iteration}, found best route: {self.best_route}")
 
         return self.best_route, self.best_distance
+
+    def update_distance_plot(self, ax):
+        ax.clear()
+        ax.plot(range(1, len(self.distances_per_iteration) + 1),
+                self.distances_per_iteration, marker='o', color='green', linestyle='-', linewidth=2)
+        ax.set_title("Length of Best Path per Iteration")
+        ax.set_xlabel("Iteration")
+        ax.set_ylabel("Distance")
+        ax.grid(True)
+        ax.set_xlim(1, self.num_iterations)
+        plt.draw()
+        plt.pause(0.1)
 
     def update_chances_plot(self, ax, iteration):
         ax.clear()
@@ -165,9 +181,7 @@ class AntColony:
 
             total_probability += probability
 
-        print(total_probability)
-
-        return total_probability
+        return total_probability if total_probability < 1 else 1
 
 
     def construct_routes(self):
@@ -194,7 +208,6 @@ class AntColony:
                     city: prob for city, prob in probabilities.items() if city not in visited}
 
                 if not unvisited_neighbors:
-                    # break  # Завершаем попытку маршрута и начинаем сначала
                     return None
 
                 # Выбираем следующий город
@@ -202,8 +215,6 @@ class AntColony:
                     list(unvisited_neighbors.keys()), p=list(unvisited_neighbors.values()))
                 route.append(next_city)
                 visited.add(next_city)
-            # if not unvisited_neighbors:
-            #     continue
 
             # Проверяем, существует ли путь от последнего города в маршруте к начальному
             if self.graph.is_oriented:
