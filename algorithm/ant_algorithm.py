@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 from graph.graph import Graph
-
+from itertools import permutations
 
 class AntColony:
     def __init__(self, graph: Graph, num_ants=15, num_iterations=20, alpha=1, beta=1, evaporation_rate=0.1):
@@ -37,17 +37,13 @@ class AntColony:
                     x1, y1 = coords[u]
                     x2, y2 = coords[v]
 
-                    # Текущее расстояние между u и v в плоскости
                     current_distance = np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-                    # Реальное расстояние (масштабируем)
-                    desired_distance = weight * 2  # Масштабируем для видимой дистанции
+                    desired_distance = weight * 2
 
-                    # Разница между текущим и реальным расстоянием
                     error = current_distance - desired_distance
 
-                    # Обновляем координаты (смещаем их друг к другу или дальше друг от друга)
-                    if current_distance > 0:  # Избегаем деления на 0
+                    if current_distance > 0:
                         dx = (x1 - x2) / current_distance * \
                             error * learning_rate
                         dy = (y1 - y2) / current_distance * \
@@ -75,17 +71,17 @@ class AntColony:
         for iteration in range(self.num_iterations):
             all_routes = self.construct_routes()
 
-            chance = self.calculate_best_path_chance(
-                all_routes, cur_best_route)
-            self.chances.append(chance)
 
             self.update_pheromone(all_routes)
             self.update_best_route(all_routes)
 
             cur_best_route = self.best_route
-            self.distances_per_iteration.append(self.best_distance)
 
             if visualize:
+                chance = self.calculate_best_path_chance(cur_best_route)
+                self.chances.append(chance)
+                self.distances_per_iteration.append(self.best_distance)
+
                 self.visualize(ax_routes, iteration, all_routes)
                 self.update_chances_plot(ax_chances, iteration)
                 self.update_distance_plot(ax_distances)
@@ -120,51 +116,78 @@ class AntColony:
         plt.pause(0.1)
 
 
-    def calculate_best_path_chance(self, all_routes, current_best_route):
+    def get_all_possible_routes(self):
+        vertices = list(self.graph.graph.keys())
+        all_possible_routes = []
+
+        for perm in permutations(vertices):
+            valid_route = True
+            route = list(perm) + [perm[0]]
+
+            for i in range(len(route) - 1):
+                u, v = route[i], route[i + 1]
+                if not self.graph.is_adjacent(u, v):
+                    valid_route = False
+                    break
+
+            if valid_route:
+                all_possible_routes.append(route)
+
+        return all_possible_routes
+
+
+    def calculate_best_path_chance(self, current_best_route):
         if not current_best_route:
             return 0
 
-        if not all_routes:
-            return 0
+        all_possible_routes = self.get_all_possible_routes()
 
-        total_probability = 0
+        total_probability_all_routes = 0
+        total_probability_best_routes = 0
 
-        for rt in self.best_routes:
+        for route in all_possible_routes:
             probability = 1
-            for i in range(len(rt) - 1):
-                u, v = rt[i], rt[i + 1]
+            visited = []
+            for i in range(len(route) - 1):
+                u, v = route[i], route[i + 1]
 
-                # Получаем значение феромонов
                 pheromone_value = self.pheromone.get((u, v), 0)
                 if not self.graph.is_oriented:
                     pheromone_value += self.pheromone.get((v, u), 0)
 
-                # Рассчитываем видимость (обратная весу ребра)
                 visibility = 1 / self.graph.get_weight(u, v)
+                attractiveness = (pheromone_value ** self.alpha) * \
+                    (visibility ** self.beta)
 
-                edge = (pheromone_value ** self.alpha) * (visibility ** self.beta)
-
-                pheromones = np.array([
-                    self.pheromone.get((u, neighbor), 0)
-                    for neighbor, _ in self.graph.get_neighbors(u)
-                ])
-                visibilities = np.array([
-                    1 / weight
-                    for neighbor, weight in self.graph.get_neighbors(u)
-                ])
-
-                numerator = (pheromones ** self.alpha) * \
+                neighbors = self.graph.get_neighbors(u)
+                pheromones = np.array(
+                    [self.pheromone.get((u, neighbor), 0) for neighbor, _ in neighbors if (neighbor, u) not in visited]
+                    )
+                
+                visibilities = np.array(
+                    [1 / weight for neighbor, weight in neighbors if (neighbor, u) not in visited]
+                    )
+                attractivenesses = (pheromones ** self.alpha) * \
                     (visibilities ** self.beta)
-                denominator = np.sum(numerator)
+                denominator = np.sum(attractivenesses)
 
-                edge /= denominator
+                if denominator > 0:
+                    attractiveness /= denominator
 
-                probability *= edge
+                probability *= attractiveness
+                visited.append((u, v))
 
-            total_probability += probability
+            total_probability_all_routes += probability
 
-        return total_probability if total_probability < 1 else 1
+            if route in self.best_routes:
+                total_probability_best_routes += probability
 
+        if total_probability_all_routes > 0:
+            normalized_probability = total_probability_best_routes / total_probability_all_routes
+        else:
+            normalized_probability = 0
+
+        return normalized_probability
 
     def construct_routes(self):
         all_routes = []
@@ -176,7 +199,6 @@ class AntColony:
 
     def build_route(self):
         while True:
-            # print(self.graph.graph)
             start_city = random.choice(list(self.graph.graph.keys()))
             route = [start_city]
             visited = set(route)
@@ -235,7 +257,10 @@ class AntColony:
 
         for route in all_routes:
             distance = self.calculate_route_distance(route)
+
+            # Вклад феромона. Q/distance, где Q-фиксированная константа. Чем короче маршрут, тем больше феромонов будет оставлено
             pheromone_contribution = 1 / distance
+
             for i in range(len(route) - 1):
                 self.pheromone[(route[i], route[i + 1])
                                ] += pheromone_contribution
@@ -244,8 +269,14 @@ class AntColony:
                                    ] += pheromone_contribution
 
     def calculate_route_distance(self, route):
-        return sum(weight for i in range(len(route) - 1) for _, weight in self.graph.get_neighbors(route[i]) if _ == route[i + 1])
-
+        total_distance = 0
+        for i in range(len(route) - 1):
+            for neighbor, weight in self.graph.get_neighbors(route[i]):
+                if neighbor == route[i + 1]:
+                    total_distance += weight
+                    break
+        return total_distance
+    
     def update_best_route(self, all_routes):
         for route in all_routes:
             distance = self.calculate_route_distance(route)

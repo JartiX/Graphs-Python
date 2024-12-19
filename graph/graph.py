@@ -103,31 +103,17 @@ class Graph:
 
         # Пока граф не удовлетворяет условиям для гамильтонова цикла, добавляем ребра
         while not self.__ore_dirak_condition():
-            max_degree_pair = None
-            max_degree_sum = -1
-
             # Найти пару несмежных вершин с максимальной суммой степеней
             for i in range(num_vertices):
                 for j in range(i + 1, num_vertices):
                     u, v = vertices[i], vertices[j]
-                    if not self.is_adjacent(u, v) and (len(self.get_neighbors(u)) + len(self.get_neighbors(v)) < num_vertices) and len(self.get_neighbors(u))<num_vertices/2 and len(self.get_neighbors(v))<num_vertices/2:
-                        degree_sum = len(self.get_neighbors(u)) + \
-                            len(self.get_neighbors(v))
-                        if degree_sum > max_degree_sum:
-                            max_degree_sum = degree_sum
-                            max_degree_pair = (u, v)
-
-            # Если такая пара найдена, добавляем ребро
-            if max_degree_pair:
-                u, v = max_degree_pair
-                if (u, v) not in added_edges:
-                    self.add_edge(u, v)
-                    added_edges.append((u, v))
-            else:
-                # Если не найдено пар для добавления, завершить цикл
-                break
+                    if not self.is_adjacent(u, v) and ((len(self.get_neighbors(u)) + len(self.get_neighbors(v)) < num_vertices) \
+                    or len(self.get_neighbors(u)) < num_vertices/2 or len(self.get_neighbors(v)) < num_vertices/2):
+                        if (u, v) not in added_edges:
+                          self.add_edge(u, v)
+                          added_edges.append((u, v))
             if added_edges:
-                print("Добавленные ребра:", added_edges[-1])
+                print("Добавленные ребра:", added_edges)
                             
     def has_hamiltonial_cycle(self):
         num_vertexes = len(self.graph.keys())
@@ -150,7 +136,6 @@ class Graph:
             print("Необходимое условие не выполнилось.")
             return False
             
-        # Проверка с использованием линейного программирование
         # Задача сводится к нахождению хода через все вершины без подциклов, что соответствует гамильтоновому циклу.
         
         normalize_edges = []
@@ -169,10 +154,15 @@ class Graph:
         for v in range(num_vertexes):
             problem += (pulp.lpSum([x[u, v] for u, v_ in normalize_edges if v_ == v]) == 1, f"In_Degree_{v}")
 
-        subsets = [set(comb) for size in range(2, num_vertexes) for comb in combinations(range(num_vertexes), size)]
+        subsets = []
+        for size in range(2, num_vertexes):
+            for comb in combinations(range(num_vertexes), size):
+                subsets.append(set(comb))
         
         # Исключаем подциклы, чтобы гарантировать, что цикл будет проходить по всем вершинам.
         for subset in subsets:
+            # Если в каждом подмножестве ребер меньше, чем количество вершин подмножества, 
+            # то все вершины подключаются единственным циклом и значит подциклов нет
             problem += (
                 pulp.lpSum([x[u, v] for u in subset for v in subset if (
                     u, v) in normalize_edges]) <= len(subset) - 1,
