@@ -127,26 +127,12 @@ class AntColony:
         if not all_routes:
             return 0
 
-        # Преобразуем all_routes в множество рёбер для быстрого поиска
-        allowed_edges = set()
-        for route in all_routes:
-            for i in range(len(route) - 1):
-                u, v = route[i], route[i + 1]
-                allowed_edges.add((u, v))
-                if not self.graph.is_oriented:
-                    allowed_edges.add((v, u))
-
         total_probability = 0
 
         for rt in self.best_routes:
             probability = 1
             for i in range(len(rt) - 1):
                 u, v = rt[i], rt[i + 1]
-
-                # Проверяем, что ребро из текущего маршрута разрешено
-                if (u, v) not in allowed_edges and (v, u) not in allowed_edges:
-                    probability = 0
-                    break
 
                 # Получаем значение феромонов
                 pheromone_value = self.pheromone.get((u, v), 0)
@@ -156,19 +142,15 @@ class AntColony:
                 # Рассчитываем видимость (обратная весу ребра)
                 visibility = 1 / self.graph.get_weight(u, v)
 
-                # Рассчитываем edge как вклад текущего ребра
                 edge = (pheromone_value ** self.alpha) * (visibility ** self.beta)
 
-                # Фильтруем только разрешенные рёбра среди соседей
                 pheromones = np.array([
                     self.pheromone.get((u, neighbor), 0)
                     for neighbor, _ in self.graph.get_neighbors(u)
-                    if (u, neighbor) in allowed_edges or (neighbor, u) in allowed_edges
                 ])
                 visibilities = np.array([
                     1 / weight
                     for neighbor, weight in self.graph.get_neighbors(u)
-                    if (u, neighbor) in allowed_edges or (neighbor, u) in allowed_edges
                 ])
 
                 numerator = (pheromones ** self.alpha) * \

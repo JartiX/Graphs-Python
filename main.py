@@ -64,6 +64,7 @@ gr.add_edge('g', 'c', 3)
 gr.add_edge('g', 'd', 5)
 gr.add_edge('f', 'd', 3)
 gr.add_edge('f', 'a', 3)
+
 # print(gr1.graph)
 # print(gr1.is_adjacent(1, 6))
 # print(gr1.has_hamiltonial_cycle())
@@ -74,6 +75,10 @@ alpha = 1
 beta = 2
 evaporation_rate = 0.3
 
+
+# print(gr1.graph)
+# gr1.make_closure()
+# print('\n', gr1.graph)
 
 # print(gr1)
 
@@ -87,39 +92,39 @@ evaporation_rate = 0.3
 # print("Лучший маршрут:", best_route)
 # print("Лучшее расстояние:", best_distance)
 # gr1.make_closure()
-aco2 = AntColony(gr1, num_ants, num_iterations, alpha, beta, evaporation_rate)
+# aco2 = AntColony(gr1, num_ants, num_iterations, alpha, beta, evaporation_rate)
 # print(gr1)
-best_route, best_distance = aco2.run(visualize=True)
+# best_route, best_distance = aco2.run(visualize=True)
 # print("Лучший маршрут:", best_route)
 # print("Лучшее расстояние:", best_distance)
 
 
-# gr1000 = Graph()
-# with open('1000.txt', 'r') as f:
-#     for l in f:
-#         try:
-#             line = l.split()[0:3]
-#             if len(line) < 3:
-#                 continue
-#             # print(line)
-#             gr1000.add_edge(int(line[0]), int(line[1]), int(line[2]))
-#         except:
-#             continue
-# # print(gr1000)
-# has_cycle = gr1000.has_hamiltonial_cycle()
+gr1000 = Graph()
+with open('1000.txt', 'r') as f:
+    for l in f:
+        try:
+            line = l.split()[0:3]
+            if len(line) < 3:
+                continue
+            # print(line)
+            gr1000.add_edge(int(line[0]), int(line[1]), int(line[2]))
+        except:
+            continue
+# print(gr1000)
+has_cycle = gr1000.has_hamiltonial_cycle()
 
-# if has_cycle:
-#     print("Гамильтонов цикл в грфе есть")
-# else:
-#     print('Гамильтонова цикла в графе нет')
+if has_cycle:
+    print("Гамильтонов цикл в грфе есть")
+else:
+    print('Гамильтонова цикла в графе нет')
 
-# gr1000.make_closure()
-# has_cycle = gr1000.has_hamiltonial_cycle()
+gr1000.make_closure()
+has_cycle = gr1000.has_hamiltonial_cycle()
 
-# if has_cycle:
-#     print("Гамильтонов цикл в грфе есть")
-# else:
-#     print('Гамильтонова цикла в графе нет')
+if has_cycle:
+    print("Гамильтонов цикл в грфе есть")
+else:
+    print('Гамильтонова цикла в графе нет')
 
 
 # aco = AntColony(gr1000, 100000000, 1, 0.5, 0.5, 0.3)

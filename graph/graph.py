@@ -65,12 +65,12 @@ class Graph:
         num_vertexes = len(self.graph.keys())
         p = num_vertexes/2
         # Условие Дирака (достаточное): если в графе с n вершинами каждая вершина имеет степень не менее n/2, то в графе существует гамильтонов цикл
-        # Условие Оре (достаточное): если для каждой пары вершин (u, v) графа выполняется условие: deg(u) + deg(v) >= n, то граф содержит гамильтонов цикл.
+        # Условие Оре (достаточное): если для каждой пары вершин (u, v) графа,  не связанных между собой, выполняется условие: deg(u) + deg(v) >= n, то граф содержит гамильтонов цикл.
         for vertex1, vertexes1 in self.graph.items():
             if len(vertexes1) < p:
                 return False
             for vertex2, vertexes2 in self.graph.items():
-                if vertex1 != vertex2:
+                if vertex1 != vertex2 and not self.is_adjacent(vertex1, vertex2):
                     if len(vertexes1) + len(vertexes2) < num_vertexes:
                         return False
         return True
