@@ -3,20 +3,26 @@ import numpy as np
 import random
 from graph.graph import Graph
 from itertools import permutations
+from algorithm.ant import AlphaAnt, Ant
 
 class AntColony:
-    def __init__(self, graph: Graph, num_ants=15, num_iterations=20, alpha=1, beta=1, evaporation_rate=0.1):
+    def __init__(self, graph: Graph, num_ants=15, num_iterations=20, alpha=1, beta=1, evaporation_rate=0.1, alpha_ant_ratio=0.2):
         self.graph = graph
         self.num_ants = num_ants
         self.num_iterations = num_iterations
         self.alpha = alpha  # важность феромонов
         self.beta = beta    # важность расстояний
         self.evaporation_rate = evaporation_rate
+        self.alpha_ant_ratio = alpha_ant_ratio
 
         self.pheromone = {edge: 1.0 for edge in self.get_all_edges()}
         self.best_distance = float('inf')
         self.best_route = None
         self.best_routes = []
+
+        self.num_alpha_ants = int(num_ants * alpha_ant_ratio)
+        self.num_regular_ants = num_ants - self.num_alpha_ants
+
         self.chances = []
         self.num_best_routes = 0
         self.distances_per_iteration = []
@@ -191,44 +197,28 @@ class AntColony:
 
     def construct_routes(self):
         all_routes = []
-        for _ in range(self.num_ants):
-            route = self.build_route()
-            if route is not None:
+
+        # Создаем обычных муравьев
+        for _ in range(self.num_regular_ants):
+            ant = Ant(self.graph, self.pheromone, self.alpha, self.beta)
+            start_city = random.choice(list(self.graph.graph.keys()))
+            ant.reset(start_city)
+            route = ant.build_route()
+            if route:
                 all_routes.append(route)
+
+        # Создаем альфа-муравьев
+        for _ in range(self.num_alpha_ants):
+            ant = AlphaAnt(self.graph)
+            start_city = random.choice(list(self.graph.graph.keys()))
+            ant.reset(start_city)
+            route = ant.build_route()
+            if route:
+                all_routes.append(route)
+        # print(all_routes)
+
         return all_routes
 
-    def build_route(self):
-        while True:
-            start_city = random.choice(list(self.graph.graph.keys()))
-            route = [start_city]
-            visited = set(route)
-
-            # Строим маршрут до посещения всех городов
-            while len(visited) < len(self.graph.graph):
-                current_city = route[-1]
-                probabilities = self.calculate_probabilities(
-                    current_city, visited)
-                unvisited_neighbors = {
-                    city: prob for city, prob in probabilities.items() if city not in visited}
-
-                if not unvisited_neighbors:
-                    return None
-
-                # Выбираем следующий город
-                next_city = np.random.choice(
-                    list(unvisited_neighbors.keys()), p=list(unvisited_neighbors.values()))
-                route.append(next_city)
-                visited.add(next_city)
-
-            # Проверяем, существует ли путь от последнего города в маршруте к начальному
-            if self.graph.is_oriented:
-                if (route[-1], start_city) in self.pheromone:
-                    route.append(start_city)
-                    return route
-            else:
-                if (route[-1], start_city) in self.pheromone or (start_city, route[-1]) in self.pheromone:
-                    route.append(start_city)
-                    return route
 
     def calculate_probabilities(self, current_city, visited):
         neighbors = [(neighbor, weight) for neighbor, weight in self.graph.get_neighbors(
@@ -332,4 +322,4 @@ class AntColony:
         ax.legend()
 
         plt.draw()
-        plt.pause(2)
+        plt.pause(1)
