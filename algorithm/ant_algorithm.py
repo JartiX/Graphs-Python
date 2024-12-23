@@ -32,13 +32,13 @@ class AntColony:
 
     def generate_random_coords(self):
         coords = {vertex: (random.uniform(0, 10), random.uniform(0, 10))
-                  for vertex in self.graph.graph}
+                  for vertex in self.graph.nodes}
 
         num_iterations = 1000
         learning_rate = 0.01
 
         for _ in range(num_iterations):
-            for u in self.graph.graph:
+            for u in self.graph.nodes:
                 for v, weight in self.graph.get_neighbors(u):
                     x1, y1 = coords[u]
                     x2, y2 = coords[v]
@@ -61,7 +61,7 @@ class AntColony:
 
     def get_all_edges(self):
         edges = []
-        for u in self.graph.graph:
+        for u in self.graph.nodes:
             for v, weight in self.graph.get_neighbors(u):
                 edges.append((u, v))
         return set(edges)
@@ -123,7 +123,7 @@ class AntColony:
 
 
     def get_all_possible_routes(self):
-        vertices = list(self.graph.graph.keys())
+        vertices = list(self.graph.nodes.keys())
         all_possible_routes = []
 
         for perm in permutations(vertices):
@@ -200,43 +200,77 @@ class AntColony:
 
         # Создаем обычных муравьев
         for _ in range(self.num_regular_ants):
-            ant = Ant(self.graph, self.pheromone, self.alpha, self.beta)
-            start_city = random.choice(list(self.graph.graph.keys()))
+            ant = Ant(self.alpha, self.beta)
+            start_city = random.choice(list(self.graph.nodes.keys()))
             ant.reset(start_city)
-            route = ant.build_route()
+            route = self.build_route(ant)
             if route:
                 all_routes.append(route)
 
         # Создаем альфа-муравьев
         for _ in range(self.num_alpha_ants):
-            ant = AlphaAnt(self.graph)
-            start_city = random.choice(list(self.graph.graph.keys()))
+            ant = AlphaAnt()
+            start_city = random.choice(list(self.graph.nodes.keys()))
             ant.reset(start_city)
-            route = ant.build_route()
+            route = self.build_route(ant)
             if route:
                 all_routes.append(route)
-        # print(all_routes)
 
         return all_routes
 
+    def choose_next_city(self, ant):
+        current_city = ant.route[-1]
 
-    def calculate_probabilities(self, current_city, visited):
-        neighbors = [(neighbor, weight) for neighbor, weight in self.graph.get_neighbors(
-            current_city) if neighbor not in visited]
-
+        neighbors = [(neighbor, weight) for neighbor, weight in self.graph.get_neighbors(current_city)
+                     if neighbor not in ant.visited]
         if not neighbors:
-            return {}  # Вернуть пустой словарь, если нет непосещенных соседей
+            return None
 
+        probabilities = self.calculate_probabilities(current_city, neighbors, ant)
+
+        unvisited_neighbors = {
+            city: prob for city, prob in probabilities.items() if city not in ant.visited}
+
+        if not unvisited_neighbors:
+            return None
+
+        next_city = np.random.choice(
+            list(unvisited_neighbors.keys()), p=list(unvisited_neighbors.values()))
+
+        return next_city
+
+    def build_route(self, ant):
+        while len(ant.visited) < len(self.graph.nodes):
+            next_city = self.choose_next_city(ant)
+            if next_city is None:
+                return None
+            ant.route.append(next_city)
+            ant.visited.add(next_city)
+
+        if self.graph.is_oriented:
+            if self.graph.is_adjacent(ant.route[-1], ant.route[0]):
+                ant.route.append(ant.route[0])
+            else:
+                return None
+        else:
+            if self.graph.is_adjacent(ant.route[-1], ant.route[0]) or self.graph.is_adjacent(ant.route[0], ant.route[-1]):
+                ant.route.append(ant.route[0])
+            else:
+                return None
+
+        return ant.route
+    
+    def calculate_probabilities(self, current_city, neighbors, ant):
         pheromone = np.array(
             [self.pheromone.get((current_city, neighbor), 0) for neighbor, _ in neighbors])
         visibility = np.array([1 / weight for _, weight in neighbors])
 
         # Вычисляем вероятности с учетом альфа и бета
-        numerator = (pheromone ** self.alpha) * (visibility ** self.beta)
-        denominator = np.sum(numerator)
+        attractiveness = (pheromone ** ant.alpha) * (visibility ** ant.beta)
+        total = np.sum(attractiveness)
 
-        probabilities = numerator / \
-            denominator if denominator > 0 else np.zeros_like(numerator)
+        probabilities = attractiveness / \
+            total if total > 0 else np.zeros_like(attractiveness)
 
         return {neighbor: prob for (neighbor, _), prob in zip(neighbors, probabilities)}
 
@@ -287,7 +321,7 @@ class AntColony:
         max_pheromone = max(self.pheromone.values()) if self.pheromone else 1
 
         # Рисуем граф
-        for u in self.graph.graph:
+        for u in self.graph.nodes:
             for v, weight in self.graph.get_neighbors(u):
                 x = [self.coords[u][0], self.coords[v][0]]
                 y = [self.coords[u][1], self.coords[v][1]]

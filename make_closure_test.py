@@ -1,5 +1,6 @@
 from graph.graph import Graph
 from algorithm.ant_algorithm import AntColony
+from graph.hamiltonial_solve import has_hamiltonial_cycle, make_closure
 
 # Поиск кратчайшего гамильтонова цикла используя муравьиный алгоритм
 gr1 = Graph(False)
@@ -17,14 +18,14 @@ gr1.add_edge(8, 0, 6)
 
 print('Граф до замыкания:\n', gr1)
 
-has_cycle = gr1.has_hamiltonial_cycle()
+has_cycle = has_hamiltonial_cycle(gr1)
 
 if not has_cycle:
-    gr1.make_closure()
+    make_closure(gr1)
 
-    print('\n\nГраф после замыкания: \n', gr1.graph)
+    print('\n\nГраф после замыкания: \n', gr1)
 
-    if gr1.has_hamiltonial_cycle():
+    if has_hamiltonial_cycle(gr1):
         print('Граф имеет гамильтонов цикл')
     else:
         print('Граф не имеет гамильтонова цикла')
